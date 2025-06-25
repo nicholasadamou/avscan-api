@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  avscan-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: avscan-api-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Node.js debug port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - CLAMAV_PATH=/usr/bin/clamscan
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/node_modules
+      # Persist ClamAV virus definitions
+      - clamav_data:/var/lib/clamav
+      # Mount uploads directory
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    command: npm run dev
+    networks:
+      - avscan-dev-network
+
+volumes:
+  clamav_data:
+    driver: local
+
+networks:
+  avscan-dev-network:
+    driver: bridge

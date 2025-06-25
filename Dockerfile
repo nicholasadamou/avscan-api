@@ -1,0 +1,73 @@
+# Use Ubuntu 20.04 as base image for better ClamAV support
+FROM ubuntu:20.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 18.x
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Install ClamAV
+RUN apt-get update && apt-get install -y \
+    clamav \
+    clamav-daemon \
+    clamav-freshclam \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create ClamAV directories and set permissions
+RUN mkdir -p /var/lib/clamav \
+    && mkdir -p /var/log/clamav \
+    && mkdir -p /var/run/clamav \
+    && chown -R clamav:clamav /var/lib/clamav \
+    && chown -R clamav:clamav /var/log/clamav \
+    && chown -R clamav:clamav /var/run/clamav
+
+# Download initial virus definitions
+RUN freshclam --config-file=/etc/clamav/freshclam.conf
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code
+COPY . .
+
+# Create uploads directory
+RUN mkdir -p uploads && chmod 755 uploads
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser \
+    && chown -R appuser:appuser /app \
+    && chown -R appuser:appuser /var/lib/clamav \
+    && chown -R appuser:appuser /var/log/clamav \
+    && chown -R appuser:appuser /var/run/clamav
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Start script
+CMD ["npm", "start"]

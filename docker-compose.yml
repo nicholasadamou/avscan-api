@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  avscan-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avscan-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - CLAMAV_PATH=/usr/bin/clamscan
+    volumes:
+      # Persist ClamAV virus definitions
+      - clamav_data:/var/lib/clamav
+      # Mount uploads directory for file processing
+      - ./uploads:/app/uploads
+      # Optional: Mount logs directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - avscan-network
+
+  # Optional: Add a reverse proxy with Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: avscan-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - avscan-api
+    restart: unless-stopped
+    networks:
+      - avscan-network
+    profiles:
+      - production
+
+volumes:
+  clamav_data:
+    driver: local
+
+networks:
+  avscan-network:
+    driver: bridge
