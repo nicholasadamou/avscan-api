@@ -107,7 +107,7 @@ sudo freshclam
 
 2. **Install dependencies**
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Create uploads directory**
@@ -117,7 +117,7 @@ sudo freshclam
 
 4. **Start the server**
    ```bash
-   npm start
+   pnpm start
    ```
 
 The API will be available at `http://localhost:3000`
@@ -263,13 +263,13 @@ The project includes a comprehensive test suite with 95%+ coverage.
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run tests with coverage
-npm run test:coverage
+pnpm run test:coverage
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
 ```
 
 ### Test Coverage
@@ -361,12 +361,12 @@ You can modify these options in `routes.js` if needed.
 
 2. **Install dependencies**
    ```bash
-   npm install --production
+   pnpm install --production
    ```
 
 3. **Start the server**
    ```bash
-   npm start
+   pnpm start
    ```
 
 ### Docker Deployment
@@ -418,7 +418,7 @@ We welcome contributions! Please follow these steps:
 4. **Add tests for new functionality**
 5. **Run the test suite**
    ```bash
-   npm test
+   pnpm test
    ```
 6. **Commit your changes**
    ```bash
@@ -434,13 +434,13 @@ We welcome contributions! Please follow these steps:
 
 ```bash
 # Install development dependencies
-npm install
+pnpm install
 
 # Start development server with auto-reload
-npm run dev
+pnpm run dev
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
 ```
 
 ## 📝 License
