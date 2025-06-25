@@ -446,34 +446,3 @@ npm run test:watch
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **ClamAV** team for providing the excellent open-source antivirus engine
-- **Express.js** team for the excellent web framework
-- **Swagger** for the API documentation tools
-- **Jest** for the testing framework
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. **Check the documentation** at `http://localhost:3000/api-docs`
-2. **Search existing issues** on GitHub
-3. **Create a new issue** with detailed information
-4. **Contact the maintainer** at nicholas@example.com
-
-## 🔄 Changelog
-
-### v1.0.0
-- Initial release with ClamAV integration
-- File upload and scanning functionality
-- Swagger documentation
-- Comprehensive test suite
-- Error handling and validation
-- Cross-platform support
-- Complete Docker setup
-
----
-
-**Made with ❤️ by [Nicholas Adamou](https://nicholasadamou.com).**
