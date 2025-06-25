@@ -43,8 +43,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Install Node.js dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN pnpm install --only=production && pnpm cache clean
 
 # Copy application code
 COPY . .
@@ -70,4 +73,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:3000/ || exit 1
 
 # Start script
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
