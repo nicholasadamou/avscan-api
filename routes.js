@@ -8,7 +8,6 @@ const express = require('express');
 const multer = require('multer');
 const { exec } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -17,24 +16,72 @@ const upload = multer({ dest: 'uploads/' });
  * Get the appropriate ClamAV scanner path based on the operating system
  */
 function getScannerPath() {
-  const platform = process.platform;
+  const scannerPaths = {
+    win32: '"C:\\Program Files\\ClamAV\\clamscan.exe"',
+    default: 'clamscan'
+  };
 
-  if (platform === 'win32') {
-    // Windows - common ClamAV installation paths
-    const windowsPaths = [
-      '"C:\\Program Files\\ClamAV\\clamscan.exe"',
-      '"C:\\Program Files (x86)\\ClamAV\\clamscan.exe"',
-      'clamscan.exe'
-    ];
-    return windowsPaths[0]; // Default to first path
-  } else {
-    // macOS and Linux - ClamAV is typically in PATH
-    return 'clamscan';
+  return scannerPaths[process.platform] || scannerPaths.default;
+}
+
+/**
+ * Set uploaded file to read-only mode for security
+ * @param {string} filePath - Path to the file to be made read-only
+ */
+function setFileReadOnly(filePath) {
+  try {
+    // Set file permissions to read-only (444 in octal = r--r--r--)
+    fs.chmodSync(filePath, 0o444);
+  } catch (error) {
+    console.warn('Failed to set file as read-only:', error.message);
+    // Don't throw error - continue with scan even if chmod fails
   }
 }
 
 /**
- * POST /scan - Scan uploaded file for viruses
+ * Clean up uploaded file
+ * @param {string} filePath - Path to the file to be cleaned up
+ */
+function cleanupFile(filePath) {
+  try {
+    fs.unlinkSync(filePath);
+  } catch (cleanupError) {
+    console.warn('Failed to cleanup uploaded file:', cleanupError.message);
+  }
+}
+
+/**
+ * Handle scan result based on ClamAV exit codes
+ * @param {Object} error - Error object from exec
+ * @param {string} stdout - Standard output from ClamAV
+ * @param {string} stderr - Standard error from ClamAV
+ * @returns {Object} Response object with clean status and output
+ */
+function handleScanResult(error, stdout, stderr) {
+  // ClamAV exit codes: 0 = clean, 1 = virus found, 2+ = error
+  const exitCode = error?.code || 0;
+
+  const responses = {
+    0: {
+      clean: true,
+      rawOutput: stdout || 'File is clean - no threats detected'
+    },
+    1: {
+      clean: false,
+      rawOutput: stdout || 'Virus detected by ClamAV'
+    },
+    default: {
+      error: true,
+      message: 'Scan failed',
+      details: stderr || error?.message || 'Unknown error'
+    }
+  };
+
+  return responses[exitCode] || responses.default;
+}
+
+/**
+ * POST /scan - Scan an uploaded file for viruses
  *
  * Accepts a file upload and scans it using ClamAV antivirus scanner.
  * The uploaded file is automatically cleaned up after scanning.
@@ -67,7 +114,7 @@ function getScannerPath() {
  * @swagger
  * /scan:
  *   post:
- *     summary: Scan uploaded file for viruses
+ *     summary: Scan an uploaded file for viruses
  *     description: Accepts a file upload and scans it using ClamAV antivirus scanner. The uploaded file is automatically cleaned up after scanning.
  *     tags: [Scanning]
  *     requestBody:
@@ -104,7 +151,7 @@ function getScannerPath() {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/scan', upload.single('file'), (req, res) => {
-  // Check if file was uploaded
+  // Check if a file was uploaded
   if (!req.file) {
     return res.status(400).json({
       error: 'No file provided',
@@ -113,6 +160,10 @@ router.post('/scan', upload.single('file'), (req, res) => {
   }
 
   const filePath = req.file.path;
+
+  // Set the file to read-only mode immediately after upload for security
+  setFileReadOnly(filePath);
+
   const scannerPath = getScannerPath();
 
   // ClamAV command with options:
@@ -123,36 +174,23 @@ router.post('/scan', upload.single('file'), (req, res) => {
 
   exec(command, (error, stdout, stderr) => {
     // Clean up the uploaded file afterward
-    try {
-      fs.unlinkSync(filePath);
-    } catch (cleanupError) {
-      console.warn('Failed to cleanup uploaded file:', cleanupError.message);
-    }
+    cleanupFile(filePath);
 
-    if (error) {
-      // ClamAV returns exit code 1 when viruses are found, 2 for errors
-      if (error.code === 1) {
-        // Virus found - this is not an error for ClamAV
-        const isClean = false;
-        res.json({
-          clean: isClean,
-          rawOutput: stdout || 'Virus detected by ClamAV'
-        });
-      } else {
-        // Actual error (exit code 2 or other)
-        return res.status(500).json({
-          error: 'Scan failed',
-          details: stderr || error.message
-        });
-      }
-    } else {
-      // No error and no output means file is clean
-      const isClean = true;
-      res.json({
-        clean: isClean,
-        rawOutput: stdout || 'File is clean - no threats detected'
+    const result = handleScanResult(error, stdout, stderr);
+
+    // Handle error cases
+    if (result.error) {
+      return res.status(500).json({
+        error: result.message,
+        details: result.details
       });
     }
+
+    // Return successful scan result
+    res.json({
+      clean: result.clean,
+      rawOutput: result.rawOutput
+    });
   });
 });
 
