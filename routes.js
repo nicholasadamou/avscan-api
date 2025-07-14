@@ -51,7 +51,7 @@ function cleanupFile(filePath) {
 }
 
 /**
- * Handle scan result based on ClamAV exit codes
+ * Handle a scan result based on ClamAV exit codes
  * @param {Object} error - Error object from exec
  * @param {string} stdout - Standard output from ClamAV
  * @param {string} stderr - Standard error from ClamAV
